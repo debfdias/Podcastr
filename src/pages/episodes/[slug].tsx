@@ -3,15 +3,12 @@ import ptBR from 'date-fns/locale/pt-BR'
 import Image from 'next/image';
 import Link from 'next/link';
 import Head from 'next/head';
-
-import { useRouter } from 'next/router'
 import next, { GetStaticPaths, GetStaticProps } from 'next';
-
 import { api } from '../../services/api';
 import { timeReadToString } from '../../utils/timeReadToString';
 
 import styles from './episode.module.scss';
-//import { usePlayer } from '../../contexts/PlayerContext';
+import { usePlayer } from '../../contexts/PlayerContext';
 
 interface Episode {
   id: string;
@@ -30,7 +27,7 @@ interface EpisodeProps {
 }
 
 export default function Episode({ episode }: EpisodeProps) {
-  //const { play } = usePlayer();
+  const { play } = usePlayer();
 
   return (
     <div className={styles.episode}>
@@ -50,7 +47,7 @@ export default function Episode({ episode }: EpisodeProps) {
           src={episode.thumbnail}
           objectFit="cover"
         />
-        <button type="button" onClick={() => {}}>
+        <button type="button" onClick={() => play(episode)}>
           <img src="/play.svg" alt="Play episode" />
         </button>
       </div>

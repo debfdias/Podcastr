@@ -1,10 +1,13 @@
-import { format, parseISO } from "date-fns";
-import Image from "next/image";
-import Link from 'next/link';
-import enUS from 'date-fns/locale/en-US'
-import { GetStaticProps } from "next";
-import { api } from "../services/api";
-import { timeReadToString } from "../utils/timeReadToString";
+import { GetStaticProps } from 'next';
+import Image from 'next/image';
+import Head from 'next/head';
+import Link from 'next/link'
+import { format, parseISO } from 'date-fns';
+import enUS from 'date-fns/locale/en-US';
+
+import { api } from '../services/api';
+import { timeReadToString } from '../utils/timeReadToString';
+import { usePlayer } from '../contexts/PlayerContext';
 
 import styles from './home.module.scss';
 
@@ -13,28 +16,35 @@ interface Episode {
   title: string;
   thumbnail: string;
   members: string;
-  publishedAt: string;
-  durationAsString: string;
   duration: number;
+  durationAsString: string;
   url: string;
-  description: string;
+  publishedAt: string;
 }
 
 interface HomeProps {
-  lastTwoEpisodes: Episode[];
-  oldEpisodes: Episode[];
+  latestEpisodes: Episode[];
+  allEpisodes: Episode[];
 }
 
-export default function Home({ lastTwoEpisodes, oldEpisodes }: HomeProps) {
+export default function Home({ latestEpisodes, allEpisodes }: HomeProps) {
+  const { playList } = usePlayer()
+
+  const episodeList = [...latestEpisodes, ...allEpisodes];
+
   return (
     <div className={styles.homepage}>
+      <Head>
+        <title>Home | Podcastr</title>
+      </Head>
+
       <section className={styles.latestEpisodes}>
         <h2>
           Last episodes:
         </h2>
 
         <ul>
-          {lastTwoEpisodes.map(episode => {
+          {latestEpisodes.map((episode, index) => {
             return (
               <li key={episode.id}>
                 <Image
@@ -54,8 +64,8 @@ export default function Home({ lastTwoEpisodes, oldEpisodes }: HomeProps) {
                   <span>{episode.durationAsString}</span>
                 </div>
 
-                <button type="button" onClick={() => {}}>
-                  <img src="/play-green.svg" alt="Tocar episódio" />
+                <button type="button" onClick={() => playList(episodeList, index)}>
+                  <img src="/play-green.svg" alt="Play episode" />
                 </button>
               </li>
             )
@@ -78,7 +88,7 @@ export default function Home({ lastTwoEpisodes, oldEpisodes }: HomeProps) {
             </tr>
           </thead>
           <tbody>
-            {oldEpisodes.map((episode, index) => {
+            {allEpisodes.map((episode, index) => {
               return (
                 <tr key={episode.id}>
                   <td style={{ width: 72 }}>
@@ -99,7 +109,7 @@ export default function Home({ lastTwoEpisodes, oldEpisodes }: HomeProps) {
                   <td style={{ width: 100 }}>{episode.publishedAt}</td>
                   <td>{episode.durationAsString}</td>
                   <td>
-                    <button type="button" onClick={() => {}}>
+                    <button type="button" onClick={() => playList(episodeList, index + latestEpisodes.length)}>
                       <img src="/play-green.svg" alt="Play episode" />
                     </button>
                   </td>
@@ -114,13 +124,13 @@ export default function Home({ lastTwoEpisodes, oldEpisodes }: HomeProps) {
 }
 
 export const getStaticProps: GetStaticProps = async () => {
-  const { data } = await api.get('/episodes', {
+  const { data } = await api.get('episodes', {
     params: {
       _limit: 12,
       _sort: 'published_at',
       _order: 'desc'
     }
-  });
+  })
 
   const episodes = data.map(episode => {
     return {
@@ -129,20 +139,19 @@ export const getStaticProps: GetStaticProps = async () => {
       thumbnail: episode.thumbnail,
       members: episode.members,
       publishedAt: format(parseISO(episode.published_at), 'd MMM yy', { locale: enUS }),
-      durationAsString: timeReadToString(Number(episode.file.duration)),
       duration: Number(episode.file.duration),
+      durationAsString: timeReadToString(Number(episode.file.duration)),
       url: episode.file.url,
-      description: episode.description
-    }
-  });
+    };
+  })
 
-  const lastTwoEpisodes = episodes.slice(0,2);
-  const oldEpisodes = episodes.slice(2, episodes.length);
+  const latestEpisodes = episodes.slice(0, 2);
+  const allEpisodes = episodes.slice(2, episodes.length);
 
   return {
     props: {
-      lastTwoEpisodes,
-      oldEpisodes
+      latestEpisodes,
+      allEpisodes,
     },
     revalidate: 60 * 60 * 8,
   }
